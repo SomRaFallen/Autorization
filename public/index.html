@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Авторизация пользователей</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f2f4f7;
+      margin: 0;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 { color: #333; }
+    form {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      margin: 15px;
+      width: 300px;
+    }
+    input {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      width: 100%;
+      padding: 8px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { background: #0056b3; }
+    .message { margin-top: 10px; color: green; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h1>🧑‍💻 Авторизация пользователей</h1>
+
+  <form id="registerForm">
+    <h3>Регистрация</h3>
+    <input type="text" id="regUser" placeholder="Имя пользователя" required>
+    <input type="password" id="regPass" placeholder="Пароль" required>
+    <button type="submit">Зарегистрироваться</button>
+    <div id="regMsg"></div>
+  </form>
+
+  <form id="loginForm">
+    <h3>Вход</h3>
+    <input type="text" id="loginUser" placeholder="Имя пользователя" required>
+    <input type="password" id="loginPass" placeholder="Пароль" required>
+    <button type="submit">Войти</button>
+    <div id="loginMsg"></div>
+  </form>
+
+  <form id="changeForm">
+    <h3>Смена пароля</h3>
+    <input type="text" id="chUser" placeholder="Имя пользователя" required>
+    <input type="password" id="chOld" placeholder="Старый пароль" required>
+    <input type="password" id="chNew" placeholder="Новый пароль" required>
+    <button type="submit">Изменить</button>
+    <div id="chMsg"></div>
+  </form>
+
+  <script>
+    async function sendForm(formId, url, fields, msgId) {
+      const data = {};
+      fields.forEach(f => data[f] = document.getElementById(f).value);
+      const msg = document.getElementById(msgId);
+      msg.textContent = '';
+
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const json = await res.json();
+        if (res.ok) {
+          msg.textContent = json.message;
+          msg.className = 'message';
+        } else {
+          msg.textContent = json.error;
+          msg.className = 'error';
+        }
+      } catch (e) {
+        msg.textContent = 'Ошибка соединения';
+        msg.className = 'error';
+      }
+    }
+
+    document.getElementById('registerForm').onsubmit = e => {
+      e.preventDefault();
+      sendForm('registerForm', '/register', ['regUser','regPass'], 'regMsg');
+    };
+
+    document.getElementById('loginForm').onsubmit = e => {
+      e.preventDefault();
+      sendForm('loginForm', '/login', ['loginUser','loginPass'], 'loginMsg');
+    };
+
+    document.getElementById('changeForm').onsubmit = e => {
+      e.preventDefault();
+      sendForm('changeForm', '/change-password', ['chUser','chOld','chNew'], 'chMsg');
+    };
+  </script>
+</body>
+</html>
