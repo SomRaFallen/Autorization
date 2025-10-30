@@ -46,35 +46,36 @@
 <body>
   <h1>🧑‍💻 Авторизация пользователей</h1>
 
+  <!-- Регистрация -->
   <form id="registerForm">
     <h3>Регистрация</h3>
-    <input type="text" id="regUser" placeholder="Имя пользователя" required>
-    <input type="password" id="regPass" placeholder="Пароль" required>
+    <input type="text" id="username" placeholder="Имя пользователя" required>
+    <input type="password" id="password" placeholder="Пароль" required>
     <button type="submit">Зарегистрироваться</button>
     <div id="regMsg"></div>
   </form>
 
+  <!-- Вход -->
   <form id="loginForm">
     <h3>Вход</h3>
-    <input type="text" id="loginUser" placeholder="Имя пользователя" required>
-    <input type="password" id="loginPass" placeholder="Пароль" required>
+    <input type="text" id="loginUsername" placeholder="Имя пользователя" required>
+    <input type="password" id="loginPassword" placeholder="Пароль" required>
     <button type="submit">Войти</button>
     <div id="loginMsg"></div>
   </form>
 
+  <!-- Смена пароля -->
   <form id="changeForm">
     <h3>Смена пароля</h3>
-    <input type="text" id="chUser" placeholder="Имя пользователя" required>
-    <input type="password" id="chOld" placeholder="Старый пароль" required>
-    <input type="password" id="chNew" placeholder="Новый пароль" required>
-    <button type="submit">Изменить</button>
+    <input type="text" id="chUsername" placeholder="Имя пользователя" required>
+    <input type="password" id="oldPassword" placeholder="Старый пароль" required>
+    <input type="password" id="newPassword" placeholder="Новый пароль" required>
+    <button type="submit">Изменить пароль</button>
     <div id="chMsg"></div>
   </form>
 
   <script>
-    async function sendForm(formId, url, fields, msgId) {
-      const data = {};
-      fields.forEach(f => data[f] = document.getElementById(f).value);
+    async function sendForm(url, data, msgId) {
       const msg = document.getElementById(msgId);
       msg.textContent = '';
 
@@ -98,19 +99,32 @@
       }
     }
 
+    // Регистрация
     document.getElementById('registerForm').onsubmit = e => {
       e.preventDefault();
-      sendForm('registerForm', '/register', ['regUser','regPass'], 'regMsg');
+      sendForm('/register', {
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value
+      }, 'regMsg');
     };
 
+    // Вход
     document.getElementById('loginForm').onsubmit = e => {
       e.preventDefault();
-      sendForm('loginForm', '/login', ['loginUser','loginPass'], 'loginMsg');
+      sendForm('/login', {
+        username: document.getElementById('loginUsername').value,
+        password: document.getElementById('loginPassword').value
+      }, 'loginMsg');
     };
 
+    // Смена пароля
     document.getElementById('changeForm').onsubmit = e => {
       e.preventDefault();
-      sendForm('changeForm', '/change-password', ['chUser','chOld','chNew'], 'chMsg');
+      sendForm('/change-password', {
+        username: document.getElementById('chUsername').value,
+        oldPassword: document.getElementById('oldPassword').value,
+        newPassword: document.getElementById('newPassword').value
+      }, 'chMsg');
     };
   </script>
 </body>
