@@ -18,7 +18,7 @@ const SECRET_KEY = process.env.SECRET_KEY || 'мой_секретный_ключ
 app.use(bodyParser.json());
 
 // Разрешаем CORS только для фронтенда GitHub Pages
-app.use(cors({ origin: 'https://somrafallen.github.io' }));
+app.use(cors({ origin: '*' }));
 
 // Отдаём статические файлы фронтенда
 app.use(express.static('public'));
