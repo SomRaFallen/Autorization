@@ -1,131 +1,115 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <title>Авторизация пользователей</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #f2f4f7;
-      margin: 0;
-      padding: 40px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    h1 { color: #333; }
-    form {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      margin: 15px;
-      width: 300px;
-    }
-    input {
-      width: 100%;
-      margin-bottom: 10px;
-      padding: 8px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-    button {
-      width: 100%;
-      padding: 8px;
-      border: none;
-      background: #007bff;
-      color: white;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    button:hover { background: #0056b3; }
-    .message { margin-top: 10px; color: green; }
-    .error { color: red; }
-  </style>
-</head>
-<body>
-  <h1>🧑‍💻 Авторизация пользователей</h1>
+const express = require('express');
+const bodyParser = require('body-parser');
+const bcrypt = require('bcrypt');
+const fs = require('fs');
+const path = require('path');
+const cors = require('cors');
+const jwt = require('jsonwebtoken');
 
-  <!-- Регистрация -->
-  <form id="registerForm">
-    <h3>Регистрация</h3>
-    <input type="text" id="username" placeholder="Имя пользователя" required>
-    <input type="password" id="password" placeholder="Пароль" required>
-    <button type="submit">Зарегистрироваться</button>
-    <div id="regMsg"></div>
-  </form>
+const app = express();
+const PORT = process.env.PORT || 3000;
+const SECRET_KEY = process.env.SECRET_KEY || 'мой_секретный_ключ';
 
-  <!-- Вход -->
-  <form id="loginForm">
-    <h3>Вход</h3>
-    <input type="text" id="loginUsername" placeholder="Имя пользователя" required>
-    <input type="password" id="loginPassword" placeholder="Пароль" required>
-    <button type="submit">Войти</button>
-    <div id="loginMsg"></div>
-  </form>
+app.use(bodyParser.json());
+app.use(cors({ origin: '*' }));
+app.use(express.static('public')); // папка с index.html, style.css, script.js
 
-  <!-- Смена пароля -->
-  <form id="changeForm">
-    <h3>Смена пароля</h3>
-    <input type="text" id="chUsername" placeholder="Имя пользователя" required>
-    <input type="password" id="oldPassword" placeholder="Старый пароль" required>
-    <input type="password" id="newPassword" placeholder="Новый пароль" required>
-    <button type="submit">Изменить пароль</button>
-    <div id="chMsg"></div>
-  </form>
+const USERS_FILE = './users.json';
+const STUDENTS_FILE = './students.json';
 
-  <script>
-    async function sendForm(url, data, msgId) {
-      const msg = document.getElementById(msgId);
-      msg.textContent = '';
+// ------------------ Работа с JSON ------------------
+function loadUsers() {
+  if (!fs.existsSync(USERS_FILE)) return {};
+  try { return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')); } 
+  catch { return {}; }
+}
+function saveUsers(users) { fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2)); }
+function loadStudents() { if (!fs.existsSync(STUDENTS_FILE)) return []; try { return JSON.parse(fs.readFileSync(STUDENTS_FILE, 'utf8')); } catch { return []; } }
+function saveStudents(students) { fs.writeFileSync(STUDENTS_FILE, JSON.stringify(students, null, 2)); }
 
-      try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-        const json = await res.json();
-        if (res.ok) {
-          msg.textContent = json.message;
-          msg.className = 'message';
-        } else {
-          msg.textContent = json.error;
-          msg.className = 'error';
-        }
-      } catch (e) {
-        msg.textContent = 'Ошибка соединения';
-        msg.className = 'error';
-      }
-    }
+let users = loadUsers();
+let students = loadStudents();
 
-    // Регистрация
-    document.getElementById('registerForm').onsubmit = e => {
-      e.preventDefault();
-      sendForm('/register', {
-        username: document.getElementById('username').value,
-        password: document.getElementById('password').value
-      }, 'regMsg');
-    };
+// ------------------ Регистрация ------------------
+app.post('/register', async (req,res)=>{
+  const { username,password } = req.body;
+  if(!username || !password) return res.status(400).json({error:'Введите имя и пароль'});
+  if(users[username]) return res.status(400).json({error:'Пользователь уже существует'});
 
-    // Вход
-    document.getElementById('loginForm').onsubmit = e => {
-      e.preventDefault();
-      sendForm('/login', {
-        username: document.getElementById('loginUsername').value,
-        password: document.getElementById('loginPassword').value
-      }, 'loginMsg');
-    };
+  const hash = await bcrypt.hash(password,10);
+  users[username] = { passwordHash: hash, role:'mentor', students:[], mentors:[] };
+  saveUsers(users);
+  res.json({message:'Пользователь зарегистрирован'});
+});
 
-    // Смена пароля
-    document.getElementById('changeForm').onsubmit = e => {
-      e.preventDefault();
-      sendForm('/change-password', {
-        username: document.getElementById('chUsername').value,
-        oldPassword: document.getElementById('oldPassword').value,
-        newPassword: document.getElementById('newPassword').value
-      }, 'chMsg');
-    };
-  </script>
-</body>
-</html>
+// ------------------ Вход ------------------
+app.post('/login', async (req,res)=>{
+  const { username,password } = req.body;
+  const user = users[username];
+  if(!user) return res.status(400).json({error:'Пользователь не найден'});
+
+  const valid = await bcrypt.compare(password,user.passwordHash);
+  if(!valid) return res.status(400).json({error:'Неверный пароль'});
+
+  const token = jwt.sign({ username, role: user.role }, SECRET_KEY, { expiresIn:'8h' });
+  res.json({
+    message:'Вход выполнен успешно',
+    token,
+    user:{ username, role:user.role, students:user.students||[], mentors:user.mentors||[] },
+    users: Object.keys(users).map(u=>({ username:u, role:users[u].role, students:users[u].students||[], mentors:users[u].mentors||[] })),
+    students
+  });
+});
+
+// ------------------ Смена пароля ------------------
+app.post('/change-password', async (req,res)=>{
+  const { username, oldPassword, newPassword } = req.body;
+  const user = users[username];
+  if(!user) return res.status(400).json({error:'Пользователь не найден'});
+
+  const valid = await bcrypt.compare(oldPassword,user.passwordHash);
+  if(!valid) return res.status(400).json({error:'Неверный старый пароль'});
+
+  user.passwordHash = await bcrypt.hash(newPassword,10);
+  saveUsers(users);
+  res.json({message:'Пароль изменён успешно'});
+});
+
+// ------------------ Middleware авторизации ------------------
+function authenticateToken(req,res,next){
+  const authHeader = req.headers['authorization'];
+  if(!authHeader) return res.status(401).json({error:'Нет токена'});
+  const token = authHeader.split(' ')[1];
+  try{
+    const payload = jwt.verify(token,SECRET_KEY);
+    req.user = payload;
+    next();
+  } catch {
+    res.status(403).json({error:'Неверный токен'});
+  }
+}
+
+// ------------------ API для dashboard ------------------
+app.get('/api/students', authenticateToken, (req,res)=>{ res.json({students}); });
+app.get('/api/users', authenticateToken, (req,res)=>{ res.json({users:Object.keys(users).map(u=>({username:u,role:users[u].role,students:users[u].students||[],mentors:users[u].mentors||[]}))}); });
+app.post('/api/saveStudentData', authenticateToken, (req,res)=>{
+  const { studentId, AHT, NSAT } = req.body;
+  const student = students.find(s=>s.id===studentId);
+  if(!student) return res.status(400).json({error:'Ученик не найден'});
+  student.AHT=AHT; student.NSAT=NSAT;
+  saveStudents(students);
+  res.json({message:'Данные ученика сохранены'});
+});
+app.post('/api/saveMentorData', authenticateToken, (req,res)=>{
+  const { mentorId, students:mentorStudents } = req.body;
+  const mentor = Object.values(users).find(u=>u.id===mentorId);
+  if(!mentor) return res.status(400).json({error:'Наставник не найден'});
+  mentor.students=mentorStudents.map(s=>s.id);
+  saveUsers(users); saveStudents(students);
+  res.json({message:'Данные наставника сохранены'});
+});
+
+// ------------------ Главная страница ------------------
+app.get('/', (req,res)=>{ res.sendFile(path.join(__dirname,'public','index.html')); });
+
+app.listen(PORT, ()=>console.log(`✅ Сервер запущен на порту ${PORT}`));
